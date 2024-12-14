@@ -1,16 +1,17 @@
-#include <cstddef>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
 
-#define nbR 8
-#define nbC 8
+#define nbR 55
+#define nbC 55
 
 struct position{
     int x;
     int y;
 };
+
+struct chain* first_elem;
 
 void parse_file(const char *s, int array[nbR][nbC])
 {
@@ -34,66 +35,149 @@ void parse_file(const char *s, int array[nbR][nbC])
 
 struct chain{
     struct position nine;
-    struct chain* prev;
     struct chain* next;
 };
 
-bool isinarr(struct position p){
-    if (p.x >= 0 && 
-        p.y >= 0 &&
-        p.y < nbR && 
-        p.x < nbC) {
+bool isinarr(int x, int y){
+    if (x >= 0 && 
+        y >= 0 &&
+        y < nbR && 
+        x < nbC) {
         return true;
     }
     return false;
 }
 
-struct chain* recurs_find(int tab[nbR][nbC], struct position p){
-    struct chain* maill;
-    struct chain* initmaill = maill;
-    struct position newp;
-    if (tab[p.y][p.x] == 9) {
-        maill = malloc(sizeof(struct chain));
-        maill->nine.x = p.x;
-        maill->nine.y = p.y;
-        return maill;
+struct position recurs_find(int tab[nbR][nbC], struct position p){
+    //printf("\tTrying (%d,%d)\n", p.x, p.y);
+    struct position tmp;
+    struct position *result;
+    struct chain *tmpchain;
+    // Try up
+    if (isinarr(p.x, p.y-1) && tab[p.y][p.x] == tab[p.y-1][p.x] - 1) {
+        tmp.x = p.x;
+        tmp.y = p.y-1;
+        result = malloc(sizeof(struct position));
+        *result = recurs_find(tab, tmp);
+        if (tab[result->y][result->x] == 9) {
+            //printf("Found 9 in (%d,%d)\n", result->x, result->y);
+            tmpchain = first_elem;
+            first_elem = malloc(sizeof(struct chain));
+            first_elem->nine.x = tmp.x;
+            first_elem->nine.y = tmp.y;
+            first_elem->next = tmpchain;
+        }
+        free(result);
     }
-    else {
-        for (int i = -1; i<=1; i++){
-            for (int j = -1; j<=1; j++){
-                if (i==0 && j==0) {
-                    continue;
-                }
-                newp.x = p.x + i;
-                newp.y = p.y + j;
+    // Try right
+    if (isinarr(p.x+1, p.y) && tab[p.y][p.x] == tab[p.y][p.x+1] - 1) {
+        tmp.x = p.x+1;
+        tmp.y = p.y;
+        result = malloc(sizeof(struct position));
+        *result = recurs_find(tab, tmp);
+        if (tab[result->y][result->x] == 9) {
+            //printf("Found 9 in (%d,%d)\n", result->x, result->y);
+            tmpchain = first_elem;
+            first_elem = malloc(sizeof(struct chain));
+            first_elem->nine.x = tmp.x;
+            first_elem->nine.y = tmp.y;
+            first_elem->next = tmpchain;
+        }
+        free(result);
+    }
+    // Try down
+    if (isinarr(p.x, p.y+1) && tab[p.y][p.x] == tab[p.y+1][p.x] - 1) {
+        tmp.x = p.x;
+        tmp.y = p.y+1;
+        result = malloc(sizeof(struct position));
+        *result = recurs_find(tab, tmp);
+        if (tab[result->y][result->x] == 9) {
+            //printf("Found 9 in (%d,%d)\n", result->x, result->y);
+            tmpchain = first_elem;
+            first_elem = malloc(sizeof(struct chain));
+            first_elem->nine.x = tmp.x;
+            first_elem->nine.y = tmp.y;
+            first_elem->next = tmpchain;
+        }
+        free(result);
+    }
+    // Try left
+    if (isinarr(p.x-1, p.y) && tab[p.y][p.x] == tab[p.y][p.x-1] - 1) {
+        tmp.x = p.x-1;
+        tmp.y = p.y;
+        result = malloc(sizeof(struct position));
+        *result = recurs_find(tab, tmp);
+        if (tab[result->y][result->x] == 9) {
+            //printf("Found 9 in (%d,%d)\n", result->x, result->y);
+            tmpchain = first_elem;
+            first_elem = malloc(sizeof(struct chain));
+            first_elem->nine.x = tmp.x;
+            first_elem->nine.y = tmp.y;
+            first_elem->next = tmpchain;
+        }
+        free(result);
+    }
 
-                if (isinarr(newp) && tab[p.y][p.x]+1 == tab[newp.y][newp.x] ) {
-                    maill = recurs_find(tab, newp);
-                    while (maill != NULL) {
-                        maill = maill->next;
-                    }
-                }
+    return p;
+}
+
+void removeDuplicates(struct chain* head) {
+    if (head == NULL) return;
+
+    struct chain* current = head;
+    struct chain* runner;
+    struct chain* prev;
+
+    while (current != NULL && current->next != NULL) {
+        runner = current;
+        while (runner->next != NULL) {
+            if (current->nine.x == runner->next->nine.x && current->nine.y == runner->next->nine.y) {
+                prev = runner;
+                struct chain* toDelete = runner->next;
+                prev->next = toDelete->next;
+                free(toDelete);
+            } else {
+                runner = runner->next;
             }
         }
-        return initmaill;
+        current = current->next;
     }
 }
 
 int main(int argc, char *argv[])
 {
     int tab[nbR][nbC];
-    struct position trailhead[nbR*nbC];
-    int nbth = 0;
+    struct position tmp;
+    first_elem = malloc(sizeof(struct chain));
+    first_elem->nine.x = -1;
+    first_elem->nine.y = -1;
+    first_elem->next = NULL;
+    struct chain* nextnode;
 
-    parse_file("input_test.txt", tab);
+    parse_file("input.txt", tab);
 
+    int result = 0;
     for (int i = 0; i<nbR; i++) {
         for (int j = 0; j<nbC; j++) {
             if (tab[i][j] == 0) {
-                trailhead[nbth].x = j;
-                trailhead[nbth].y = i;
-                nbth++;
-                printf("%d,%d\n", i,j);
+                printf("Found 0 in (%d,%d)\n", j,i);
+                tmp.x = j;
+                tmp.y = i;
+                recurs_find(tab, tmp);
+                //removeDuplicates(first_elem);
+                while (first_elem->next != NULL) {
+                    result++;
+                    //printf("(%d,%d)\n", first_elem->nine.x, first_elem->nine.y);
+                    nextnode = first_elem->next;
+                    free(first_elem);
+                    first_elem = nextnode;
+                }
+                free(first_elem);
+                first_elem = malloc(sizeof(struct chain));
+                first_elem->nine.x = -1;
+                first_elem->nine.y = -1;
+                first_elem->next = NULL;
+                printf("Result so far %d\n", result);
             }
         }
     }
